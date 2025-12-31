@@ -1,0 +1,33 @@
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.ncb
+*.opendb
+*.db
+*.ipch
+*.ap_
+*.sdf
+*.tlog
+*.obj
+*.log
+*.idb
+*.pdb
+*.pch
+*.res
+*.lastbuildstate
+
+# JUCE Builds
+**/x64/
+**/Debug/
+**/Release/
+**/Int/
+**/build/
+**/Makefile
+**/obj/
+
+# macOS
+.DS_Store
+
+# JUCE
+JuceLibraryCode/modules
