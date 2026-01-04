@@ -11,14 +11,24 @@ StardustEditor::ParameterControl::ParameterControl (juce::AudioProcessorParamete
     slider.setSliderStyle (juce::Slider::LinearBar);
     slider.setTextBoxStyle (juce::Slider::NoTextBox, false, 0, 0);
     slider.setRange (0.0, 1.0, 0.0);
-    
+
+    // Neon 80s palette for contrast
+    const auto trackColour   = juce::Colour::fromRGB (0x1a, 0x10, 0x33);   // deep indigo track
+    const auto fillColour    = juce::Colour::fromRGB (0xff, 0x2f, 0xd0);   // magenta fill
+    const auto thumbColour   = juce::Colour::fromRGB (0x27, 0xe8, 0xff);   // cyan thumb
+    const auto valueText     = juce::Colour::fromRGB (0x74, 0xf0, 0xff);   // bright aqua text
+
+    slider.setColour (juce::Slider::backgroundColourId, trackColour);
+    slider.setColour (juce::Slider::trackColourId, fillColour);
+    slider.setColour (juce::Slider::thumbColourId, thumbColour);
+
     // We use the normalized value for the slider, but display the formatted text
     slider.onValueChange = [this]
     {
         if (slider.isMouseButtonDown())
             param.setValueNotifyingHost ((float) slider.getValue());
     };
-    
+
     slider.onDragStart = [this] { param.beginChangeGesture(); };
     slider.onDragEnd   = [this] { param.endChangeGesture(); };
 
@@ -32,8 +42,8 @@ StardustEditor::ParameterControl::ParameterControl (juce::AudioProcessorParamete
     valueLabel.setJustificationType (juce::Justification::centredRight);
     valueLabel.setFont (18.0f);
     valueLabel.setInterceptsMouseClicks (false, false);
-    valueLabel.setColour (juce::Label::textColourId, juce::Colours::white);
-    
+    valueLabel.setColour (juce::Label::textColourId, valueText);
+
     syncFromParam();
 }
 
@@ -66,19 +76,27 @@ StardustEditor::GroupComponent::GroupComponent (const juce::String& name) : grou
 void StardustEditor::GroupComponent::paint (juce::Graphics& g)
 {
     auto bounds = getLocalBounds().toFloat();
-    
-    // Draw group frame
-    g.setColour (juce::Colours::white.withAlpha (0.2f));
-    g.drawRoundedRectangle (bounds.reduced (2.0f), 4.0f, 1.0f);
-    
-    // Draw group name background
+
+    const auto panel     = juce::Colour::fromRGB (0x1a, 0x10, 0x33);
+    const auto accentM   = juce::Colour::fromRGB (0xff, 0x2f, 0xd0);
+    const auto accentC   = juce::Colour::fromRGB (0x27, 0xe8, 0xff);
+    const auto textMain  = juce::Colour::fromRGB (0xf4, 0xf8, 0xff);
+
+    g.setColour (panel.withAlpha (0.35f));
+    g.fillRoundedRectangle (bounds.reduced (2.0f), 6.0f);
+
+    g.setColour (accentM.withAlpha (0.4f));
+    g.drawRoundedRectangle (bounds.reduced (2.0f), 6.0f, 1.5f);
+
     if (groupName.isNotEmpty())
     {
         auto headerBounds = bounds.removeFromTop (30.0f);
-        g.setColour (juce::Colours::white.withAlpha (0.1f));
-        g.fillRoundedRectangle (headerBounds.reduced (2.0f), 4.0f);
-        
-        g.setColour (juce::Colours::white);
+        juce::ColourGradient grad (accentM.withAlpha (0.28f), headerBounds.getX(), headerBounds.getY(),
+                                   accentC.withAlpha (0.24f), headerBounds.getRight(), headerBounds.getBottom(), false);
+        g.setGradientFill (grad);
+        g.fillRoundedRectangle (headerBounds.reduced (3.0f), 5.0f);
+
+        g.setColour (textMain);
         g.setFont (20.0f);
         g.drawText (groupName, headerBounds, juce::Justification::centred, true);
     }
@@ -90,7 +108,7 @@ void StardustEditor::GroupComponent::resized()
     
     if (groupName.isNotEmpty())
         area.removeFromTop (30); // Space for header
-
+    
     juce::FlexBox flex;
     
     // If we have subgroups, we likely want a grid/wrap layout (dashboard style)
@@ -98,23 +116,42 @@ void StardustEditor::GroupComponent::resized()
     {
         flex.flexDirection = juce::FlexBox::Direction::row;
         flex.flexWrap = juce::FlexBox::Wrap::wrap;
-        flex.alignContent = juce::FlexBox::AlignContent::stretch;
+        flex.alignContent = juce::FlexBox::AlignContent::flexStart;
+        flex.alignItems = juce::FlexBox::AlignItems::flexStart;
     }
     else
     {
         // Leaf group with parameters: vertical stack
         flex.flexDirection = juce::FlexBox::Direction::column;
-        flex.alignContent = juce::FlexBox::AlignContent::stretch;
-        flex.justifyContent = juce::FlexBox::JustifyContent::center;
+        const bool isMultiLeaf = groupName.containsIgnoreCase ("Multiband") || groupName.containsIgnoreCase ("Wideband");
+        flex.alignContent = isMultiLeaf ? juce::FlexBox::AlignContent::flexStart
+                                        : juce::FlexBox::AlignContent::stretch;
+        flex.justifyContent = isMultiLeaf ? juce::FlexBox::JustifyContent::flexStart
+                                          : juce::FlexBox::JustifyContent::center;
     }
     
-    const int itemHeight = 45;
+    const int itemHeight = 26;
     const int groupSpacing = 10;
 
     for (auto& sub : subGroups)
     {
-        // Give subgroups a minimum width so they wrap nicely
-        flex.items.add (juce::FlexItem (*sub).withFlex (1.0f).withMargin (groupSpacing).withMinWidth (300.0f).withMinHeight (250.0f));
+        auto margin = juce::FlexItem::Margin (groupSpacing);
+        if (sub->groupName.containsIgnoreCase ("Multiband") || sub->groupName.containsIgnoreCase ("Wideband"))
+            margin.top = juce::jmax (0.0f, margin.top - 8.0f);
+
+        juce::FlexItem item (*sub);
+        item.flexGrow = 1.0f;
+        const bool isMulti = sub->groupName.containsIgnoreCase ("Multiband") || sub->groupName.containsIgnoreCase ("Wideband");
+        const bool isStereoEnh = sub->groupName.containsIgnoreCase ("Stereo Enhancer");
+        const bool isBassEnh = sub->groupName.containsIgnoreCase ("Bass Enhancer") || sub->groupName.containsIgnoreCase ("Bass");
+        const bool isTrebleEnh = sub->groupName.containsIgnoreCase ("Treble Enhancer") || sub->groupName.containsIgnoreCase ("Treble");
+        const bool compact = isStereoEnh || isBassEnh || isTrebleEnh;
+        const bool compactEnh = compact || isBassEnh || isTrebleEnh;
+        item.minWidth = compactEnh ? 190.0f : 300.0f;
+        item.minHeight = compactEnh ? 130.0f : 250.0f;
+         item.margin = margin;
+
+        flex.items.add (item);
     }
     
     for (auto& param : parameters)
@@ -151,9 +188,27 @@ void StardustEditor::setProcessor (juce::AudioProcessor* newProcessor)
 
 void StardustEditor::paint (juce::Graphics& g)
 {
-    g.fillAll (juce::Colour::fromRGB (11, 16, 24)); // Match main background
+    auto bounds = getLocalBounds().toFloat();
+
     if (bgImage.isValid())
-        g.drawImage (bgImage, getLocalBounds().toFloat(), juce::RectanglePlacement::stretchToFit);
+    {
+        g.drawImage (bgImage, bounds, juce::RectanglePlacement::stretchToFit);
+    }
+    else
+    {
+        juce::Colour base    = juce::Colour::fromRGB (0x0b, 0x10, 0x18);
+        juce::Colour panel   = juce::Colour::fromRGB (0x1a, 0x10, 0x33);
+        juce::Colour accentM = juce::Colour::fromRGB (0xff, 0x2f, 0xd0);
+        juce::Colour accentC = juce::Colour::fromRGB (0x27, 0xe8, 0xff);
+
+        juce::ColourGradient gradient { panel, bounds.getTopLeft(),
+                                        base,  bounds.getBottomRight(), false };
+        gradient.addColour (0.35f, accentM.withAlpha (0.12f));
+        gradient.addColour (0.65f, accentC.withAlpha (0.10f));
+
+        g.setGradientFill (gradient);
+        g.fillRect (bounds);
+    }
 }
 
 void StardustEditor::resized()
@@ -266,7 +321,7 @@ void StardustEditor::organizeParametersSmartly (const juce::Array<juce::AudioPro
             { "Wide Coef", { "Wide", "Width", "Coef" } },
             { "Delay", { "Delay" } }
         }},
-        { "Multiband Compressor", { "Multi", "MB", "Mid", "" }, {
+        { "Wideband Compressor", { "Wideband", "Master", "Comp", "" }, { // Empty string as fallback to match generic names
             { "Input gain", { "Input", "In Gain" } },
             { "Threshold", { "Thresh" } },
             { "Ratio", { "Ratio" } },
@@ -274,7 +329,7 @@ void StardustEditor::organizeParametersSmartly (const juce::Array<juce::AudioPro
             { "Release", { "Release" } },
             { "Output Gain", { "Output", "Out Gain", "MakeUp" } }
         }},
-        { "Wideband Compressor", { "Wideband", "Master", "Comp", "" }, { // Empty string as fallback to match generic names
+        { "Multiband Compressor", { "Multi", "MB", "Mid", "" }, {
             { "Input gain", { "Input", "In Gain" } },
             { "Threshold", { "Thresh" } },
             { "Ratio", { "Ratio" } },

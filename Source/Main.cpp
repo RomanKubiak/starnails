@@ -8,6 +8,7 @@
 
 #include <JuceHeader.h>
 #include "MainComponent.h"
+#include "NeonLookAndFeel.h"
 
 //==============================================================================
 class starnailsApplication  : public juce::JUCEApplication
@@ -23,31 +24,30 @@ public:
     //==============================================================================
     void initialise (const juce::String& commandLine) override
     {
-        // This method is where you should put your application's initialisation code..
+        juce::String pluginPath = commandLine.trim();
 
-        mainWindow.reset (new MainWindow (getApplicationName()));
+        neonLookAndFeel = std::make_unique<NeonLookAndFeel>();
+        juce::LookAndFeel::setDefaultLookAndFeel (neonLookAndFeel.get());
+
+        mainWindow.reset (new MainWindow (getApplicationName(), pluginPath));
     }
 
     void shutdown() override
     {
-        // Add your application's shutdown code here..
-
         mainWindow = nullptr; // (deletes our window)
+        juce::LookAndFeel::setDefaultLookAndFeel (nullptr);
+        neonLookAndFeel.reset();
     }
 
     //==============================================================================
     void systemRequestedQuit() override
     {
-        // This is called when the app is being asked to quit: you can ignore this
-        // request and let the app carry on running, or call quit() to allow the app to close.
         quit();
     }
 
     void anotherInstanceStarted (const juce::String& commandLine) override
     {
-        // When another instance of the app is launched while this one is running,
-        // this method is invoked, and the commandLine parameter tells you what
-        // the other instance's command-line arguments were.
+        juce::ignoreUnused (commandLine);
     }
 
     //==============================================================================
@@ -58,39 +58,38 @@ public:
     class MainWindow    : public juce::DocumentWindow
     {
     public:
-        MainWindow (juce::String name)
-            : DocumentWindow (name,
+        MainWindow (juce::String _name, const juce::String& _pluginPath)
+            : DocumentWindow (_name,
                               juce::Desktop::getInstance().getDefaultLookAndFeel()
                                                           .findColour (juce::ResizableWindow::backgroundColourId),
-                              DocumentWindow::allButtons)
+                              0,
+                              true)
         {
-            setUsingNativeTitleBar (true);
-            setContentOwned (new MainComponent(), true);
+            setUsingNativeTitleBar (false);
+            setTitleBarHeight (0);
+            setResizable (false, false);
+            setDropShadowEnabled (true);
 
-           #if JUCE_IOS || JUCE_ANDROID
-            setFullScreen (true);
-           #else
-            setResizable (true, true);
+            setContentOwned (new MainComponent(), true);
+            setSize (1024, 600);
             centreWithSize (getWidth(), getHeight());
-           #endif
+
+            if (auto* mc = dynamic_cast<MainComponent*> (getContentComponent()))
+            {
+                if (_pluginPath.isNotEmpty())
+                {
+                    juce::String err;
+                    mc->loadPluginFile (juce::File (_pluginPath), err);
+                }
+            }
 
             setVisible (true);
         }
 
         void closeButtonPressed() override
         {
-            // This is called when the user tries to close this window. Here, we'll just
-            // ask the app to quit when this happens, but you can change this to do
-            // whatever you need.
             JUCEApplication::getInstance()->systemRequestedQuit();
         }
-
-        /* Note: Be careful if you override any DocumentWindow methods - the base
-           class uses a lot of them, so by overriding you might break its functionality.
-           It's best to do all your work in your content component instead, but if
-           you really have to override any DocumentWindow methods, make sure your
-           subclass also calls the superclass's method.
-        */
 
     private:
         JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (MainWindow)
@@ -98,6 +97,7 @@ public:
 
 private:
     std::unique_ptr<MainWindow> mainWindow;
+    std::unique_ptr<NeonLookAndFeel> neonLookAndFeel;
 };
 
 //==============================================================================

@@ -3,8 +3,19 @@
 <JUCERPROJECT id="IoJJxw" name="starnails" projectType="guiapp" useAppConfig="0"
               addUsingNamespaceToJuceHeader="0" jucerFormatVersion="1">
   <MAINGROUP id="Vx5xb3" name="starnails">
-    <GROUP id="{30DF1CB5-BB75-984D-FAE0-20B7313DEC88}" name="Resources"/>
+    <GROUP id="{30DF1CB5-BB75-984D-FAE0-20B7313DEC88}" name="Resources">
+      <FILE id="rSXlfo" name="StarlitNeon-Regular.otf" compile="0" resource="1"
+            file="Resources/StarlitNeon-Regular.otf"/>
+    </GROUP>
     <GROUP id="{D8C8AD38-2C30-3233-690B-AE8BF06FF97A}" name="Source">
+      <FILE id="ZsFvp2" name="ParameterGridComponent.h" compile="0" resource="0"
+            file="Source/ParameterGridComponent.h"/>
+      <FILE id="Wd4crh" name="SinglePluginLoader.h" compile="0" resource="0"
+            file="Source/SinglePluginLoader.h"/>
+      <FILE id="SVRrfP" name="StardustEditor.cpp" compile="1" resource="0"
+            file="Source/StardustEditor.cpp"/>
+      <FILE id="DmI4zG" name="StardustEditor.h" compile="0" resource="0"
+            file="Source/StardustEditor.h"/>
       <FILE id="SZCWGe" name="Main.cpp" compile="1" resource="0" file="Source/Main.cpp"/>
       <FILE id="sTKPyZ" name="MainComponent.h" compile="0" resource="0" file="Source/MainComponent.h"/>
       <FILE id="EtkFYf" name="MainComponent.cpp" compile="1" resource="0"
